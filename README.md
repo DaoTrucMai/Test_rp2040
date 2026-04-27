@@ -148,15 +148,38 @@ lsusb | grep -i "2e8a"
 
 ## 6. Cài đặt công cụ đo tốc độ trên Ubuntu
 
-```bash
-sudo pip3 install pyusb
-```
-
-Hoặc dùng pip cho user hiện tại:
+Ubuntu 22.04 / 24.04 dùng Python 3.12+ với PEP 668, **không cho phép `pip install` trực tiếp** vào môi trường hệ thống.
+Cách đơn giản nhất là dùng `apt`:
 
 ```bash
-pip3 install --user pyusb
+sudo apt install python3-usb
 ```
+
+Kiểm tra đã cài thành công:
+
+```bash
+python3 -c "import usb.core; print('pyusb OK')"
+```
+
+> **Nếu máy bạn không có `python3-usb` trong apt** (Ubuntu cũ hoặc môi trường tùy chỉnh), dùng virtual environment:
+>
+> ```bash
+> sudo apt install python3-venv python3-full
+> python3 -m venv ~/pico/venv
+> ~/pico/venv/bin/pip install pyusb
+> # Sau đó chạy script bằng:
+> ~/pico/venv/bin/python3 utils/usb_speed_test.py
+> ```
+
+### Cài tất cả trong một lệnh (khuyến nghị)
+
+Thay vì làm bước 6 và 7 riêng lẻ, bạn có thể chạy script tự động:
+
+```bash
+bash utils/setup_ubuntu.sh
+```
+
+Script này sẽ tự động cài `python3-usb`, cài udev rule, và thêm user vào group `plugdev`.
 
 ---
 
@@ -273,6 +296,23 @@ EP2 IN:   ~631 kB/s
 
 - Chưa cài udev rule. Làm theo [Bước 7](#7-cài-đặt-udev-rule-để-không-cần-sudo).
 - Rút và cắm lại Pico sau khi cài rule.
+
+### `error: externally-managed-environment` (Ubuntu 22.04 / 24.04)
+
+Ubuntu mới dùng PEP 668, không cho `pip install` trực tiếp. Dùng `apt` thay thế:
+
+```bash
+sudo apt install python3-usb
+```
+
+Hoặc nếu muốn dùng pip, tạo virtual environment:
+
+```bash
+sudo apt install python3-venv python3-full
+python3 -m venv ~/pico/venv
+~/pico/venv/bin/pip install pyusb
+~/pico/venv/bin/python3 utils/usb_speed_test.py
+```
 
 ### `arm-none-eabi-gcc: command not found`
 
