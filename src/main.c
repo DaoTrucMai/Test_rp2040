@@ -141,7 +141,6 @@ void ep4_out_handler(uint8_t *buf, uint16_t len) {
         usb_continue_transfer(ep);
     } else {
         printf("\nEP4 OUT transfer completed %d bytes received from host", ep->completed_pos);
-        printf("\nBC 0x%X", *ep->buffer_control);
-        //*ep->buffer_control = 0;
+        *ep->buffer_control = 0;
     }
 }

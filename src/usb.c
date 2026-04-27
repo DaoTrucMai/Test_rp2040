@@ -75,7 +75,9 @@ void isr_usbctrl(void) {
     }
 
     if (status ^ handled) {
-        panic("Unhandled IRQ 0x%x\n", (uint)(status ^ handled));
+        // Clear unhandled interrupt bits instead of panicking,
+        // so the firmware keeps running if the host sends unexpected IRQs.
+        usb_hw_clear->sie_status = (status ^ handled);
     }
 }
 

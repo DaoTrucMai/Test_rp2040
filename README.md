@@ -286,6 +286,41 @@ EP2 IN:   ~631 kB/s
 
 ## 11. Xử lý lỗi thường gặp
 
+### Pico không kết nối được sau khi flash firmware
+
+Đây là vấn đề phổ biến. Dưới đây là các nguyên nhân theo thứ tự khả năng xảy ra:
+
+**Bước chẩn đoán nhanh:**
+```bash
+lsusb | grep 2e8a
+```
+
+| Kết quả `lsusb` | Nguyên nhân | Giải pháp |
+|---|---|---|
+| Không thấy gì | Firmware crash (panic) hoặc firmware không chạy | Rút cắm lại Pico |
+| Thấy `2e8a:0003` (BootROM) | Firmware bị lỗi, Pico reset về bootloader | Flash lại firmware |
+| Thấy `2e8a:0001` | Firmware đang chạy tốt, lỗi do phần mềm phía host | Xem bên dưới |
+
+**Nguyên nhân 1 – Firmware crash do Unhandled IRQ (đã sửa trong repo này)**
+
+Firmware gốc có `panic("Unhandled IRQ")` — nếu Ubuntu gửi bất kỳ USB interrupt nào ngoài 3 loại được xử lý, Pico **treo ngay lập tức**. Phiên bản trong repo này đã thay bằng `usb_hw_clear->sie_status` để bỏ qua interrupt lạ thay vì crash.
+
+**Nguyên nhân 2 – `dev.set_configuration()` giữ claim interface (đã sửa)**
+
+Phiên bản cũ của script gọi `dev.set_configuration()`, khiến pyusb claim interface nhưng không release đúng cách. Lần chạy kế tiếp sẽ báo lỗi `Resource busy`. Đã sửa bằng cách xóa lệnh đó và thêm `usb.util.dispose_resources(dev)` ở cuối.
+
+**Nguyên nhân 3 – EP4 buffer_control không được reset (đã sửa)**
+
+Sau khi EP4 OUT stream hoàn thành, `buffer_control` không được xóa, khiến lần transfer tiếp theo bị stuck. Đã uncomment `*ep->buffer_control = 0`.
+
+**Nguyên nhân 4 – Cáp USB chỉ có dây nguồn, không có dây data**
+
+Dấu hiệu: Đèn LED Pico sáng nhưng `lsusb` không thấy. Đổi sang cáp khác.
+
+**Nguyên nhân 5 – Cần rút cắm lại sau khi firmware crash**
+
+Nếu Pico bị treo, chỉ cần rút cáp USB ra và cắm lại (không cần giữ BOOTSEL vì firmware vẫn còn trong flash).
+
 ### `ValueError: Device not found`
 
 - Kiểm tra Pico có đang được cắm không: `lsusb | grep 2e8a`
