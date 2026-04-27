@@ -39,6 +39,7 @@ static void handle_buff_status(void);
 static uint start_data_packet(struct usb_endpoint_configuration *ep);
 static void acknowledge_out_request(void);
 static void acknowledge_in_request(void);
+static void stall_ep0(void);
 static void prepare_control_packet(volatile struct usb_setup_packet *pkt);
 static void ep0_in_handler(uint8_t *buf, uint16_t len);
 static inline uint get_ep_bit(struct usb_endpoint_configuration *ep);
@@ -255,6 +256,12 @@ static void handle_setup_packet(void) {
         }
     }
     if (dev_config.control_transfer_handler) control_transfer_handler(ep0_buf, pkt, STAGE_SETUP);
+    if (!handled && (bmRequestType & USB_DIR_IN)) {
+        // Unknown IN request (e.g. GET_DESCRIPTOR(BOS) sent by Windows 10/11).
+        // Must STALL EP0 — sending garbage data causes Windows to reset the bus.
+        stall_ep0();
+        return;
+    }
     if (!pkt->wLength)
         if (bmRequestType & USB_DIR_IN)
             acknowledge_in_request();
@@ -452,6 +459,15 @@ static void handle_buff_status(void) {
         }
         bit <<= 1u;
     }
+}
+
+static void stall_ep0(void) {
+    // Stall both EP0 IN and OUT to signal "unsupported request" to the host.
+    // Windows requires a proper STALL for unknown descriptors (e.g. BOS, 0x0F)
+    // instead of receiving garbage data. Without this, Windows resets the bus.
+    usb_hw_set->ep_stall_arm = USB_EP_STALL_ARM_EP0_IN_BITS | USB_EP_STALL_ARM_EP0_OUT_BITS;
+    usb_dpram->ep_buf_ctrl[0].in  = USB_BUF_CTRL_STALL;
+    usb_dpram->ep_buf_ctrl[0].out = USB_BUF_CTRL_STALL;
 }
 
 static void acknowledge_out_request(void) {
