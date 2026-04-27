@@ -286,6 +286,80 @@ EP2 IN:   ~631 kB/s
 
 ## 11. Xử lý lỗi thường gặp
 
+### "Cannot attach USB device" — Bạn đang dùng máy ảo (VirtualBox / VMware)
+
+Thông báo này **không phải lỗi firmware hay script** — đây là Ubuntu đang chạy trong máy ảo và VM chưa được cấp quyền "capture" USB device từ máy host (Windows/macOS).
+
+Khi cắm Pico vào, máy host (Windows/macOS) đang giữ device. VM cần được cấu hình để "cướp" device đó về phía mình.
+
+---
+
+#### Nếu dùng VirtualBox
+
+**Bước 1 – Cài VirtualBox Extension Pack** (chỉ cần làm 1 lần)
+
+Tải tại: https://www.virtualbox.org/wiki/Downloads → chọn đúng phiên bản VirtualBox đang dùng → `Oracle VirtualBox Extension Pack`
+
+Double-click file `.vbox-extpack` vừa tải để cài.
+
+**Bước 2 – Thêm USB filter cho Pico**
+
+1. Tắt máy ảo Ubuntu (Shut down, không phải Pause).
+2. Mở VirtualBox → chọn máy ảo Ubuntu → **Settings** → **USB**.
+3. Chọn **USB 2.0 (EHCI)** hoặc **USB 3.0 (xHCI)** (cần Extension Pack).
+4. Nhấn nút **Add filter from device** (icon USB có dấu +) → chọn **Raspberry Pi Pico**.
+5. Nhấn OK.
+6. Khởi động lại máy ảo.
+
+**Bước 3 – Capture device thủ công** (nếu vẫn cần)
+
+Khi Pico đã được cắm và máy ảo đang chạy:
+- Menu VirtualBox: **Devices** → **USB** → chọn **Raspberry Pi Pico (2E8A:0001)** → tích chọn.
+
+Kiểm tra trong Ubuntu:
+```bash
+lsusb | grep 2e8a
+# Phải thấy: Bus ... ID 2e8a:0001
+```
+
+---
+
+#### Nếu dùng VMware Workstation / Fusion
+
+**Bước 1 – Cấu hình auto-connect USB**
+
+- Menu: **VM** → **Settings** → **USB Controller**
+- Chọn **USB 3.1** (hoặc 2.0)
+- Tích **Automatically connect new USB devices**
+- Nhấn OK.
+
+**Bước 2 – Connect thủ công**
+
+Khi Pico đang cắm:
+- Menu: **VM** → **Removable Devices** → **Raspberry Pi Pico** → **Connect (Disconnect from Host)**
+
+---
+
+#### Lưu ý đặc biệt: Pico có 2 USB ID khác nhau
+
+Khi cắm Pico, nó có thể xuất hiện với 2 ID khác nhau tùy trạng thái:
+
+| Trạng thái | USB ID | Mô tả |
+|---|---|---|
+| Đang ở chế độ BOOTSEL (chờ flash) | `2E8A:0003` | Mass storage để nạp firmware |
+| Firmware đang chạy bình thường | `2E8A:0001` | Thiết bị USB custom của library này |
+
+Bạn cần tạo filter (hoặc capture) **cả hai ID** trong VM settings, vì:
+1. Khi cắm Pico lần đầu (hoặc sau khi reset) nó sẽ xuất hiện là `0003`.
+2. Sau khi firmware boot xong, nó chuyển sang `0001`.
+3. Nếu chỉ filter `0001`, VM sẽ bỏ lỡ quá trình kết nối ban đầu.
+
+Cách thêm filter cho cả hai trong VirtualBox:
+- Thêm filter thứ nhất: Vendor `2E8A`, Product `0003`
+- Thêm filter thứ hai: Vendor `2E8A`, Product `0001`
+
+---
+
 ### Pico không kết nối được sau khi flash firmware
 
 Đây là vấn đề phổ biến. Dưới đây là các nguyên nhân theo thứ tự khả năng xảy ra:
